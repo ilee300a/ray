@@ -7,9 +7,10 @@ from ray.train.constants import (
     TRAIN_DATASET_KEY,
 )
 
-from typing import TYPE_CHECKING, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Callable, Dict, Optional, List
 from ray.air.checkpoint import Checkpoint
 from ray.air.config import DatasetConfig, RunConfig, ScalingConfig
+from ray.train.mosaic._mosaic_utils import RayLogger
 
 from ray.train.torch import TorchConfig, TorchTrainer
 from ray.train.trainer import GenDataset
@@ -117,6 +118,15 @@ def _mosaic_train_loop_per_worker(config):
     # the dataloader should be prepared inside the ``trainer_init_per_worker`` function
     train_dataset = session.get_dataset_shard(TRAIN_DATASET_KEY)
     eval_dataset = session.get_dataset_shard(EVALUATION_DATASET_KEY)
+
+    # add RayLogger to Composer trainer loggers
+    ray_logger = RayLogger(keys=config.pop("log_keys", []))
+    if "loggers" in config:
+        if not isinstance(config["loggers"], List):
+            config["loggers"] = [config["loggers"]]
+        config["loggers"].append(ray_logger)
+    else:
+        config["loggers"] = [ray_logger]
 
     # initialize Composer trainer
     trainer: composer.trainer.Trainer = trainer_init_per_worker(**config)

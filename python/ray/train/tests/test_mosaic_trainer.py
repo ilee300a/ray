@@ -116,6 +116,49 @@ def test_mosaic_e2e():
 
     trainer.fit()
 
+def test_ray_logger():
+    """Tests if Ray Logger correctly reported metrics logged by composer trainer.
+    """
+    trainer_init_config = {
+        "max_duration": "1ba",
+        "train_dataset": train_dataset,
+        "test_dataset": test_dataset,
+        "loggers": [InMemoryLogger()]
+    }
+
+    trainer = MosaicTrainer(
+        trainer_init_per_worker=trainer_init_per_worker,
+        trainer_init_config=trainer_init_config,
+        scaling_config=scaling_config,
+    )
+
+    result = trainer.fit()
+
+    # check if the passed in log key exists
+    assert "trainer/global_step" in result.metrics_dataframe.columns
+
+def test_metrics_key():
+    """Tests if `log_keys` defined in `trianer_init_config` appears in result
+    metrics_dataframe.
+    """
+    trainer_init_config = {
+        "max_duration": "1ba",
+        "train_dataset": train_dataset,
+        "test_dataset": test_dataset,
+        "eval": True,
+        "log_keys": ["metrics/my_evaluator/Accuracy"],
+    }
+
+    trainer = MosaicTrainer(
+        trainer_init_per_worker=trainer_init_per_worker,
+        trainer_init_config=trainer_init_config,
+        scaling_config=scaling_config,
+    )
+
+    result = trainer.fit()
+
+    # check if the passed in log key exists
+    assert "metrics/my_evaluator/Accuracy" in result.metrics_dataframe.columns
 
 if __name__ == "__main__":
     import sys
